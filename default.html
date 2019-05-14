@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head> 
+    <title>test1</title>
+      <link rel="stylesheet" href="ol.css" type="text/css">
+    <style>
+      .map {
+        height: 400px;
+        width: 100%;
+      }
+    </style>
+    <script src="ol.js"></script>
+  </head>
+  <body>
+
+    <div id="map" class="map"></div>
+  <script>
+
+    function colorizefunc( inputs , data )
+    {
+      var image0 = inputs[0];
+      var image0data = image0.data ;
+      var width = image0.width;
+      var height = image0.height;
+      console.log(width) ;
+      console.log(height) ;
+      var image1data = new Uint8ClampedArray(image0data.length);
+
+      for( ix = 0 ; ix < width ; ++ ix )
+      {
+        for( iy = 0 ; iy < height ; ++ iy )
+        {
+          var ofs = (iy * width + ix )*4 ;
+          if( image0data[ofs+0] < 32 )
+          {
+            image1data[ofs+0] = 255 ;
+            image1data[ofs+1] = 0 ;
+            image1data[ofs+2] = 0 ;
+            image1data[ofs+3] = 255 ;
+          }else if( image0data[ofs+0] <64 )
+          {
+            image1data[ofs+0] = 0 ;
+            image1data[ofs+1] = 255 ;
+            image1data[ofs+2] = 0 ;
+            image1data[ofs+3] = 255 ;
+          }else if( image0data[ofs+0] <128 )
+          {
+            image1data[ofs+0] = 255 ;
+            image1data[ofs+1] = 255 ;
+            image1data[ofs+2] = 0 ;
+            image1data[ofs+3] = 255 ;
+          }else 
+          {
+            image1data[ofs+0] = 0 ;
+            image1data[ofs+1] = 0 ;
+            image1data[ofs+2] = 255 ;
+            image1data[ofs+3] = 255 ;
+          }
+        }
+      }
+      return {data: image1data, width: width, height: height};
+    }
+
+    function xyzrawtileload(tile, src)
+    {
+      console.log("xyzrawtileload");
+      var xhr = new XMLHttpRequest();
+      xhr.responseType = 'blob';
+      xhr.addEventListener('loadend', function (evt) {
+        var data = this.response;
+       
+        if (data !== undefined) {
+          var fr = new FileReader();
+          fr.readAsArrayBuffer(data);
+          fr.onload = function()
+          {
+            var data1 =new Int16Array(fr.result) ;
+            console.log(data1);
+          }
+          tile.getImage().src = URL.createObjectURL(data);
+        } else {
+          tile.setState(TileState.ERROR);
+        }
+      });
+      xhr.addEventListener('error', function () {
+        tile.setState(TileState.ERROR);
+      });
+      xhr.open('GET', src);
+      xhr.send();
+    }
+
+    var xyztile = new ol.source.XYZ({
+        url: 'http://127.0.0.1/test_ol_rawtile_render/tiles/{z}/{x}/{y}.raw',
+        crossOrigin: 'anonymous',
+        transition: 0 ,
+        tileLoadFunction:xyzrawtileload
+      });
+
+    var raster = new ol.source.Raster({
+        sources: [xyztile],
+        operationType: 'image',
+        operation: colorizefunc
+      });
+
+
+    var map = new ol.Map(
+    {
+      target:'map' , 
+      layers:[
+        new ol.layer.Image({
+          source:raster
+        })
+      ],
+      view: new ol.View({
+        center:ol.proj.fromLonLat([37.41,8.82]),
+        zoom:0
+      })
+
+    }) ;
+  </script>
+</html>
